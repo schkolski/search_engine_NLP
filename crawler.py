@@ -29,11 +29,10 @@ def crawl(url, max_links = 10000):
         
     c = 1
 
-        
     while len(urls) > 0:
         try:
             htmltext = urllib.urlopen(urls[0]).read()
-        except:
+        except Exception:
             print 'ERROR!' + urls[0]
             
         soup = BeautifulSoup(htmltext)
@@ -64,9 +63,9 @@ def crawl(url, max_links = 10000):
 
 
 def read_urls(file_name):
-    file = open(file_name, 'r')
-    urls = file.read().split('\n')
-    file.close()
+    f = open(file_name, 'r')
+    urls = f.read().split('\n')
+    f.close()
     mk_urls = set([])  # mk_urls = set(filter(mkSites,mk_urls)
     for line in urls:
         if '.mk' in line:
