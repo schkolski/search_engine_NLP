@@ -3,7 +3,7 @@
 import urlparse
 import urllib
 from bs4 import BeautifulSoup
-#from urlparse import urlparse
+import time
 
 
 def get_domain(url):
@@ -17,12 +17,12 @@ def get_domain(url):
 
 
 def mak_sites(link):
-    return '.mk' in link
+    return '.mk' in link or 'macedonia' in link
 
 
-def crawl(url, max_links = 10000):
+def crawl(url, max_links=10000):
     urls = [url]
-    visited = set([url])
+    visited = {url}
 
     point_to = []
     point_to_added = set([])
@@ -32,30 +32,26 @@ def crawl(url, max_links = 10000):
     while len(urls) > 0:
         try:
             htmltext = urllib.urlopen(urls[0]).read()
-        except Exception:
-            print 'ERROR!' + urls[0]
-            
-        soup = BeautifulSoup(htmltext)
 
-        urls.pop(0)
+            soup = BeautifulSoup(htmltext)
 
-        for tag in soup.findAll('a', href = True):
-            tag['href'] = urlparse.urljoin(url, tag['href'])
+            urls.pop(0)
 
-            if url in tag['href'] and tag['href'] not in visited:
-                urls.append(tag['href'])
-                visited.add(tag['href'])
-                c += 1
-            elif url not in tag['href'] and get_domain(tag['href']) not in point_to_added:
-                point_to.append(get_domain(tag['href']))
-                point_to_added.add(get_domain(tag['href']))
-                """
-##                print get_domain(tag['href'])
-##                c += 1
-##        if c % 1000 == 0:
-##            print c
-"""
-        print c
+            for tag in soup.findAll('a', href=True):
+                tag['href'] = urlparse.urljoin(url, tag['href'])
+
+                if url in tag['href'] and tag['href'] not in visited:
+                    urls.append(tag['href'])
+                    visited.add(tag['href'])
+                    c += 1
+                elif url not in tag['href'] and get_domain(tag['href']) not in point_to_added:
+                    if 'http' in get_domain(tag['href']) and 'admin' not in get_domain(tag['href']):
+                        point_to.append(get_domain(tag['href']))
+                        point_to_added.add(get_domain(tag['href']))
+        except Exception, e:
+            #print 'ERROR! ' + urls[0]
+            pass
+
         if c > max_links:
             break
 
@@ -68,14 +64,15 @@ def read_urls(file_name):
     f.close()
     mk_urls = set([])  # mk_urls = set(filter(mkSites,mk_urls)
     for line in urls:
-        if '.mk' in line:
+        if '.mk' in line or 'macedonia' in line:
             mk_urls.add(line)
     
     return list(mk_urls)
 
         
-def write_crawled_urls(urls, file_name):
+def write_crawled_urls(urls, start_url, file_name):
     f = open(file_name, 'a')
+    f.write('FROM: ' + start_url + '\n')
     for u in urls:
         f.write(u + '\n')
     f.close()
@@ -89,7 +86,7 @@ def crawl_urls():
     
     for url in urls_to_crawl:
         point_links, crawled_links = crawl(url)
-        write_crawled_urls(point_links, 'crawled.txt')
+        write_crawled_urls(point_links, url, 'crawled.txt')
         from_to[url] += point_links
     return from_to
 """
@@ -102,8 +99,36 @@ def crawl_urls():
 ##        print '-'*80
 ##
 """
-url = 'http://www.macedonia.eu.org/'
-p, v = crawl(url, 1000)
+# URL = 'http://www.macedonia.eu.org/'
+#  p, v = crawl(URL, 1000)
 
-for e in p:
-    print e
+
+def get_next_urls_for_crawling(mapa):
+    urls = []
+    for key in mapa.keys():
+        urls += mapa[key]
+    return filter(mak_sites, urls)
+
+
+def write_to_file(file_name, option, urls):
+    f = open(file_name, option)
+    for u in urls:
+        f.write(u + '\n')
+    f.close()
+
+
+def main():
+    start = time.time()
+    print "Crawler is started! Let's crawl the web!"
+    for i in xrange(DEEP):
+        print "Starting to crawl level:", i
+        mapa = crawl_urls()
+        urls = get_next_urls_for_crawling(mapa)
+        write_to_file('urls.txt', 'w', urls)
+        print "Succsessful crawled level:", i
+    end = time.time()
+    print 'Crawler has finished! Web is crawled! :) for ', (end - start), 'sec'
+DEEP = 3
+
+if __name__ == '__main__':
+    print main()
